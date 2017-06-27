@@ -1,0 +1,19 @@
+hex-to-char
+hex-to-b64
+b64-to-char
+b64-to-hex
+
+# Vim
+*~
+*.sw[a-z]
+.ycm_extra_conf.py
+
+# Build
+*.override
+*.o
+*.out
+*.hex
+*.elf
+*.map
+*.bin
+*.srec
