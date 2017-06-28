@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 
     raw_to_hex(&raw, hex);
 
-    printf("'%s'\n", (char *)hex);
+    printf("%s\n", (char *)hex);
 
     free(hex);
     if ((r = free_raw(&raw))) {

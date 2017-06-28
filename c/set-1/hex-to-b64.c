@@ -16,6 +16,12 @@ int main(int argc, char **argv)
 
     char *hex = argv[1];
     size_t hex_len = strlen(hex);
+
+    if (0 == hex_len) {
+        printf("Error: HEX-ENCODED-STRING is empty\n");
+        return 2;
+    }
+
     if (hex_len % 2) {
         printf("Error: HEX-ENCODED-STRING is not of even length\n");
         return 2;
@@ -42,7 +48,7 @@ int main(int argc, char **argv)
 
     raw_to_b64(&raw, b64);
 
-    printf("'%s'\n", (char *)b64);
+    printf("%s\n", (char *)b64);
 
     free(b64);
 

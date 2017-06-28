@@ -51,7 +51,7 @@ int main(int argc, char **argv)
         return 2;
     }
 
-    printf("'%s'\n", (char *)raw.data);
+    printf("%s\n", (char *)raw.data);
 
     if ((r = free_raw(&raw))) {
         printf("Error: free_raw() returned %d\n", r);
