@@ -2,6 +2,7 @@ hex-to-char
 hex-to-b64
 b64-to-char
 b64-to-hex
+fixed-xor
 
 # Vim
 *~
