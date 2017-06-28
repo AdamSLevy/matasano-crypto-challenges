@@ -4,6 +4,8 @@ b64-to-char
 b64-to-hex
 fixed-xor
 single-byte-xor-cipher-crack
+repeating-key-xor
+hamming-distance
 
 # Vim
 *~
