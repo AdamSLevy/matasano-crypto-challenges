@@ -186,6 +186,8 @@ long double letter_freq_variance(raw_t msg)
     char prev_letter = '\0';
     size_t prev_letter_index = 0;
     size_t num_valid_letters = 0;
+
+    // Count number of occurances of single letters and pairs
     for (size_t l = 0; l < msg.len; l++) {
         size_t letter_index;
         if (' ' == text[l]) {
@@ -204,24 +206,27 @@ long double letter_freq_variance(raw_t msg)
         prev_letter = text[l];
     }
 
+
+    // Compute the sum of the squared differences from the average frequencies
     long double text_letter_freq[NUM_LETTERS] = {0};
     long double text_letter_cond_freq[NUM_LETTERS][NUM_LETTERS] = {{0}};
     long double sum_squares = 0;
     for (size_t l = 0; l < NUM_LETTERS; l++) {
-        //printf("'%c' %ld\n", SPACE == l ? ' ' : 'A' + (char)l, letter_count[l]);
         text_letter_freq[l] = (long double)letter_count[l] / msg.len;
-        //printf("%Lf\n", text_letter_freq[l]);
         text_letter_freq[l] = text_letter_freq[l] - avg_letter_freq[l];
         text_letter_freq[l] *= text_letter_freq[l];
         sum_squares += text_letter_freq[l];
         for (size_t t = 0; t < NUM_LETTERS; t++) {
             text_letter_cond_freq[l][t] =  (long double)letter_cond_count[l][t] / msg.len;
-            text_letter_cond_freq[l][t] =  text_letter_cond_freq[l][t] - avg_letter_cond_freq[l][t];
+            text_letter_cond_freq[l][t] =  text_letter_cond_freq[l][t]
+                                            - avg_letter_cond_freq[l][t];
             text_letter_cond_freq[l][t] *= text_letter_cond_freq[l][t];
             sum_squares += text_letter_cond_freq[l][t];
         }
     }
-    sum_squares += (long double)1 / (num_valid_letters + 1);
+
+    // Weight strings with low numbers of valid letters
+    sum_squares /= (num_valid_letters + 1);
 
     return sum_squares;
 }

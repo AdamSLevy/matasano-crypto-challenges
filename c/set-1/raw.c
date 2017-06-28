@@ -11,9 +11,16 @@ int init_raw(raw_t *r, size_t len)
         return 1;
     }
 
-    if (NULL == (r->data = (uint8_t*)calloc(len + 1, sizeof(char)))) {
-        r->data = NULL;
-        return 2;
+    if (NULL == r->data) {
+        if (NULL == (r->data = (uint8_t*)calloc(len + 1, sizeof(char)))) {
+            r->data = NULL;
+            return 2;
+        }
+    } else {
+        if (NULL == (r->data = (uint8_t*)realloc((void *)r->data, len + 1))) {
+            r->data = NULL;
+            return 2;
+        }
     }
 
     char *end = (char *)r->data + len;

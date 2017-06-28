@@ -28,4 +28,10 @@ raw.o: raw.c raw.h
 frequency-analysis.o: frequency-analysis.c frequency-analysis.h
 
 clean: 
-	rm hex-to-b64 hex-to-char b64-to-hex b64-to-char *.o
+	rm *.o					\
+	    single-byte-xor-cipher-crack 	\
+	    fixed-xor 				\
+	    hex-to-b64 				\
+	    hex-to-char 			\
+	    b64-to-hex 				\
+	    b64-to-char
