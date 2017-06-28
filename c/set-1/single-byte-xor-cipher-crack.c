@@ -13,7 +13,7 @@ typedef struct {
     uint8_t xor_key;
     long double variance;
 } min_var_msg_t;
-#define NUM_MSGS (2)
+#define NUM_MSGS (5)
 
 int main(int argc, char **argv)
 {
