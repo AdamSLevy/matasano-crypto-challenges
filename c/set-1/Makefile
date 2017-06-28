@@ -1,12 +1,16 @@
 CFLAGS=-Wall -O3 -s
 LDFLAGS=-Wall -O3 -s
 
-all: single-byte-xor-cipher-crack 	\
+all: repeating-key-xor			\
+     single-byte-xor-cipher-crack 	\
      fixed-xor 				\
      hex-to-b64 			\
      hex-to-char 			\
      b64-to-hex 			\
      b64-to-char
+
+repeating-key-xor: repeating-key-xor.o raw.o
+repeating-key-xor.o: repeating-key-xor.c raw.h
 
 single-byte-xor-cipher-crack: single-byte-xor-cipher-crack.o raw.o frequency-analysis.o
 single-byte-xor-cipher-crack.o: single-byte-xor-cipher-crack.c raw.h frequency-analysis.h
