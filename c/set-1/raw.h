@@ -1,3 +1,6 @@
+#ifndef RAW_H
+#define RAW_H
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -23,3 +26,5 @@ int hex_to_raw(char *, raw_t *);
 int b64_to_raw(char *, raw_t *);
 void raw_to_hex(raw_t *, char *);
 void raw_to_b64(raw_t *, char *);
+
+#endif // RAW_H

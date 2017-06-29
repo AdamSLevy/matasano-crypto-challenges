@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "raw.h"
+#include <stdio.h>
 
 // Allocate len + 1 bytes at r->data
 int init_raw(raw_t *r, size_t len)
@@ -13,11 +14,13 @@ int init_raw(raw_t *r, size_t len)
 
     if (NULL == r->data) {
         if (NULL == (r->data = (uint8_t*)calloc(len + 1, sizeof(char)))) {
+            printf("calloc()\n");
             r->data = NULL;
             return 2;
         }
     } else {
         if (NULL == (r->data = (uint8_t*)realloc((void *)r->data, len + 1))) {
+            printf("realloc()\n");
             r->data = NULL;
             return 2;
         }
