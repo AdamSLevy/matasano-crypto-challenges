@@ -34,6 +34,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    // Load base64 encoded cipher file
     FILE *cipher_file = fopen(argv[1], "r");
     if (NULL == cipher_file) {
         int err = errno;
@@ -74,7 +75,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Convert cipher_b64 to raw_t cipher
+    // Convert base64 encoded cipher_b64 to raw bytes
     size_t data_len = 3 * (cipher_b64_len / 4);
     switch (cipher_b64_len % 4) {
         case 0:
@@ -111,13 +112,17 @@ int main(int argc, char **argv)
     // Determine top likely keysizes by minimum average hamming distance of keysize blocks
     keysize_t top_keysizes[NUM_TOP_KEYSIZES] = {{0, DBL_MAX}};
     for (size_t keysize = MIN_KEYSIZE; keysize <= MAX_KEYSIZE; keysize++) {
-        size_t ham_sum = 0;
+        double ham_sum = 0;
+        // Take pairs of blocks of data of size keysize and compute hamming distance
         for (size_t i = 0; i < (cipher.len / keysize) - 1; i += 2) {
             raw_t left =  {cipher.data +       i * keysize, keysize};
             raw_t right = {cipher.data + (i + 1) * keysize, keysize};
-            ham_sum += hamming_distance(left, right);
+            // Sum the average hamming distance per char
+            ham_sum += hamming_distance(left, right) / keysize;
         }
-        double ham_score = ((double)ham_sum / keysize) / ((cipher.len / keysize) / 2);
+        // Average the average hamming distance per char over all the pairs
+        double ham_score = ham_sum / ((cipher.len / keysize) / 2);
+        // Save the minimum NUM_TOP_KEYSIZES keysizes
         if (ham_score <= top_keysizes[0].ham_score) {
             for (size_t i = NUM_TOP_KEYSIZES - 1; i > 0; i--) {
                 memcpy(&top_keysizes[i], &top_keysizes[i - 1], sizeof(keysize_t));
@@ -132,13 +137,15 @@ int main(int argc, char **argv)
                 top_keysizes[i].ham_score, top_keysizes[i].keysize);
     }
 
-    // Transpose cipher into num keysize blocks of size cipher.len / keysize + 1
+    // Transpose cipher into num keysize blocks of size cipher.len / keysize (approx)
     // Crack each block as single key xor
     for (size_t k = 0; k < NUM_TOP_KEYSIZES; k++) {
         // Allocate blocks
         size_t keysize = top_keysizes[k].keysize;
         raw_t *blocks = (raw_t *)calloc(keysize, sizeof(raw_t));
         for (size_t i = 0; i < keysize; i++) {
+            // Initialize blocks to size cipher.len / keysize and
+            // Add remainder bytes to first (cipher.len % keysize) blocks
             if ((r = init_raw(&blocks[i], cipher.len / keysize +
                             (i < cipher.len % keysize ? 1 : 0)))) {
                 printf("Error: init_raw() returned %d\n", r);
@@ -152,7 +159,7 @@ int main(int argc, char **argv)
             blocks[b % keysize].data[b / keysize] = cipher.data[b];
         }
 
-        // Crack each block
+        // Allocate 2d array to save best XOR keys for each block
         best_blocks_t *best = (best_blocks_t *)calloc(NUM_BEST_BLOCKS * keysize,
                 sizeof(best_blocks_t));
         if (NULL == best) {
@@ -160,13 +167,14 @@ int main(int argc, char **argv)
             return -1;
         }
 
+        // Crack each block to find single byte XOR key
         for (size_t k = 0; k < keysize; k++) {
             crack_xor(blocks[k], &best[k * NUM_BEST_BLOCKS], NUM_BEST_BLOCKS);
         }
 
         raw_t plain[NUM_BEST_BLOCKS] = {{NULL, 0}};
         raw_t key[NUM_BEST_BLOCKS] = {{NULL, 0}};
-        // Transpose best plaintext blocks back to correct order
+        // Transpose best plaintext blocks and the key back to correct order
         for (size_t d = 0; d < NUM_BEST_BLOCKS; d++) {
             printf("line %d d %lu\n", __LINE__, d);
             if (init_raw(&key[d], keysize)) {
