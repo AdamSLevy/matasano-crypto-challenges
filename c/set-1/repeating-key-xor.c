@@ -51,7 +51,7 @@ int main(int argc, char **argv)
         printf("Error: malloc()\n");
     }
 
-    raw_to_hex(&cipher, hex);
+    raw_to_hex(cipher, hex);
 
     printf("%s\n", (char *)hex);
 

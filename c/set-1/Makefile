@@ -1,15 +1,16 @@
 CFLAGS=-Wall -O3 -s
 LDFLAGS=-Wall -O3 -s
 
-all: compute-hamming-distance 		\
+all: convert 				\
+     compute-hamming-distance 		\
      repeating-key-xor-crack 		\
      repeating-key-xor			\
      single-byte-xor-cipher-crack 	\
      fixed-xor 				\
-     hex-to-b64 			\
-     hex-to-char 			\
-     b64-to-hex 			\
-     b64-to-char
+
+convert: convert.o raw.o convert_argp.o
+convert.o: convert.c raw.h convert_argp.h
+convert_argp.o: convert_argp.c convert_argp.h
 
 repeating-key-xor-crack:   repeating-key-xor-crack.o \
     raw.o \
@@ -32,16 +33,6 @@ single-byte-xor-cipher-crack.o: single-byte-xor-cipher-crack.c raw.h frequency-a
 fixed-xor:   fixed-xor.o   raw.o
 fixed-xor.o:   fixed-xor.c   raw.h
 
-hex-to-b64:  hex-to-b64.o  raw.o
-hex-to-char: hex-to-char.o raw.o
-b64-to-hex:  b64-to-hex.o  raw.o
-b64-to-char: b64-to-char.o raw.o
-
-hex-to-b64.o:  hex-to-b64.c  raw.h
-hex-to-char.o: hex-to-char.c raw.h
-b64-to-hex.o:  b64-to-hex.c  raw.h
-b64-to-char.o: b64-to-char.c raw.h
-
 raw.o: raw.c raw.h
 frequency-analysis.o: frequency-analysis.c frequency-analysis.h
 hamming-distance.o: hamming-distance.c raw.h
@@ -52,8 +43,4 @@ clean:
 	 repeating-key-xor-crack 		\
 	 repeating-key-xor			\
 	 single-byte-xor-cipher-crack 		\
-	 fixed-xor 				\
-	 hex-to-b64 				\
-	 hex-to-char 				\
-	 b64-to-hex 				\
-	 b64-to-char
+	 fixed-xor

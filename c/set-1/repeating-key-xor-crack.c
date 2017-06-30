@@ -9,7 +9,7 @@
 #include "hamming-distance.h"
 #include "frequency-analysis.h"
 
-#define NUM_TOP_KEYSIZES (1)
+#define NUM_TOP_KEYSIZES (3)
 #define MIN_KEYSIZE (2)
 #define MAX_KEYSIZE (48)
 typedef struct {
@@ -74,6 +74,7 @@ int main(int argc, char **argv)
         printf("Error: realloc() %d, '%s'", err, strerror(err));
         return -1;
     }
+    printf("line %d\n", __LINE__);
 
     // Convert base64 encoded cipher_b64 to raw bytes
     size_t data_len = 3 * (cipher_b64_len / 4);
@@ -101,17 +102,20 @@ int main(int argc, char **argv)
         printf("Error: init_raw() returned %d\n", r);
         return 3;
     }
+    printf("line %d\n", __LINE__);
 
-    if ((r = b64_to_raw(cipher_b64, &cipher))) {
+    if ((r = b64_to_raw(cipher_b64, cipher))) {
         printf("Error: b64_to_raw() returned %d\n", r);
         return 2;
     }
 
     free(cipher_b64);
 
+    size_t max_keysize = MAX_KEYSIZE <= cipher.len ? MAX_KEYSIZE : cipher.len;
+
     // Determine top likely keysizes by minimum average hamming distance of keysize blocks
     keysize_t top_keysizes[NUM_TOP_KEYSIZES] = {{0, DBL_MAX}};
-    for (size_t keysize = MIN_KEYSIZE; keysize <= MAX_KEYSIZE; keysize++) {
+    for (size_t keysize = MIN_KEYSIZE; keysize <= max_keysize; keysize++) {
         double ham_sum = 0;
         // Take pairs of blocks of data of size keysize and compute hamming distance
         for (size_t i = 0; i < (cipher.len / keysize) - 1; i += 2) {
@@ -140,6 +144,9 @@ int main(int argc, char **argv)
     // Transpose cipher into num keysize blocks of size cipher.len / keysize (approx)
     // Crack each block as single key xor
     for (size_t k = 0; k < NUM_TOP_KEYSIZES; k++) {
+        if (top_keysizes[k].keysize == 0) {
+            break;
+        }
         // Allocate blocks
         size_t keysize = top_keysizes[k].keysize;
         raw_t *blocks = (raw_t *)calloc(keysize, sizeof(raw_t));

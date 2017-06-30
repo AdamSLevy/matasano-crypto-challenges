@@ -61,17 +61,17 @@ int main(int argc, char **argv)
         return 3;
     }
 
-    if ((r = hex_to_raw(hex1, &raw1))) {
+    if ((r = hex_to_raw(hex1, raw1))) {
         printf("Error: hex_to_raw() returned %d\n", r);
         return 2;
     }
 
-    if ((r = hex_to_raw(hex2, &raw2))) {
+    if ((r = hex_to_raw(hex2, raw2))) {
         printf("Error: hex_to_raw() returned %d\n", r);
         return 2;
     }
 
-    if (fixed_xor(&raw1, &raw2, &result)) {
+    if (fixed_xor(raw1, raw2, result)) {
         printf("Error: fixed_xor() returned %d\n", r);
         return 2;
     }
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
         printf("Error: malloc()\n");
     }
 
-    raw_to_hex(&result, result_hex);
+    raw_to_hex(result, result_hex);
 
     printf("%s\n", (char *)result_hex);
 

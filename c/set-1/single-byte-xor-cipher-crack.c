@@ -46,7 +46,7 @@ int main(int argc, char **argv)
                 printf("Error: init_raw() returned %d\n", r);
                 return 3;
             }
-            if ((r = hex_to_raw(hex, &cipher))) {
+            if ((r = hex_to_raw(hex, cipher))) {
                 printf("Error: hex_to_raw() returned %d\n", r);
                 return 2;
             }
