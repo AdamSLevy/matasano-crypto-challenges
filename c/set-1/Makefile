@@ -1,12 +1,17 @@
 CFLAGS=-Wall -O3 -s
 LDFLAGS=-Wall -O3 -s
 
-all: convert 				\
+all: decrypt-aes-128-ecb		\
+     convert 				\
      compute-hamming-distance 		\
      repeating-key-xor-crack 		\
      repeating-key-xor			\
      single-byte-xor-cipher-crack 	\
-     fixed-xor 				\
+     fixed-xor
+
+decrypt-aes-128-ecb: LDFLAGS+= -lcrypto
+decrypt-aes-128-ecb: decrypt-aes-128-ecb.o raw.o
+decrypt-aes-128-ecb.o: decrypt-aes-128-ecb.c raw.h
 
 convert: convert.o raw.o convert_argp.o
 convert.o: convert.c raw.h convert_argp.h
