@@ -1,5 +1,7 @@
 convert
 decrypt-aes-128-ecb
+decrypt-aes-128-cbc
+detect-aes-128-ecb
 fixed-xor
 single-byte-xor-cipher-crack
 repeating-key-xor
