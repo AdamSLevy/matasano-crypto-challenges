@@ -33,6 +33,7 @@ typedef struct {
     int argc;
     char **argv;
     bool binary;
+    int pad;
 } convert_opts_t;
 
 #define CONVERT_OPTS_INIT (convert_opts_t){ \
@@ -44,6 +45,7 @@ typedef struct {
     0, \
     NULL, \
     false, \
+    0, \
 }
 
 int parse_opt(int key, char *arg, struct argp_state *state);

@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include "convert_argp.h"
 
 const char * argp_program_version = "v1.1.0";
@@ -34,7 +35,25 @@ const struct argp_option options[] = {
         "Set input encoding",
         1
     },
-    {.doc = "Set input source and output destination", .group = 2},
+    {.doc = "Parse options", .group = 2},
+    {
+        "binary",
+        'b',
+        0,
+        0,
+        "Parse files and output data as binary (includes '\\n' and '\\0' bytes). "
+            "only meaningful when reading or writing to a file with char encoding",
+        2,
+    },
+    {
+        "pad",
+        'p',
+        "BLOCKSIZE",
+        OPTION_ARG_OPTIONAL,
+        "Pad data to BLOCKSIZE according to PKCS#7. BLOCKSIZE defaults to 16",
+        2,
+    },
+    {.doc = "Set input source and output destination", .group = 3},
     {
         "file",
         'f',
@@ -42,7 +61,7 @@ const struct argp_option options[] = {
         0,
         "INPUTs are parsed as list of files. "
             "Newlines in files are ignored.",
-        2,
+        3,
     },
     {
         "output",
@@ -50,16 +69,7 @@ const struct argp_option options[] = {
         "FILE",
         0,
         "Output to FILE",
-        2,
-    },
-    {
-        "binary",
-        'b',
-        0,
-        0,
-        "Parse files and output data as binary (includes '\\n' and '\\0' bytes). "
-            "Only meaningful when reading or writing to a file with CHAR encoding",
-        2,
+        3,
     },
     {0,0,0,0,0,0}
 };
@@ -118,6 +128,23 @@ int parse_opt(int key, char *arg, struct argp_state *state)
             break;
         case 'b':
             opts->binary = true;
+            break;
+        case 'p':
+            if (NULL == arg) {
+                opts->pad = 16;
+            } else {
+                errno = 0;
+                char * end = NULL;
+                int pad = strtol(arg, &end, 10);
+                if (errno == 0 && *end == '\0') {
+                    if (2 > pad || pad >= 256) {
+                        argp_error(state, "Invalid padding BLOCKSIZE");
+                    }
+                    opts->pad = pad;
+                } else {
+                    argp_error(state, "Could not parse padding BLOCKSIZE");
+                }
+            }
             break;
         case ARGP_KEY_ARG:
             if (SOURCE_FILE != opts->source) {

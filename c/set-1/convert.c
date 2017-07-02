@@ -12,9 +12,8 @@
 int main(int argc, char **argv)
 {
     convert_opts_t opts = CONVERT_OPTS_INIT;
-    int argv_id = 0;
     int r = 0;
-    if ((r = argp_parse(&args, argc, argv, 0, &argv_id, &opts))) {
+    if ((r = argp_parse(&args, argc, argv, 0, NULL, &opts))) {
         return r;
     }
 
@@ -24,7 +23,12 @@ int main(int argc, char **argv)
         case SOURCE_ARGS:
             input = (raw_t *)calloc(num_inputs, sizeof(raw_t));
             for (int i = 0; i < num_inputs; i++) {
-                input[i].data = (uint8_t *)opts.argv[i];
+                size_t len = strlen(opts.argv[i]);
+                if ((r = init_raw(&input[i], len))) {
+                    fprintf(stderr, "Error: init_raw() returned %d\n", r);
+                    return EXIT_FAILURE;
+                }
+                memcpy(input[i].data, opts.argv[i], len);
             }
             break;
         case SOURCE_FILE:
@@ -199,8 +203,8 @@ int main(int argc, char **argv)
             for (int i = 0; i < num_inputs; i++) {
                 size_t b64_len = input[i].len;
                 if (0 == b64_len) {
-                    printf("Error: BASE64-ENCODED-STRING is empty\n");
-                    return 2;
+                    fprintf(stderr, "Error: BASE64-ENCODED-STRING is empty\n");
+                    return EXIT_FAILURE;
                 }
                 size_t data_len = 3 * (b64_len / 4);
                 switch (b64_len % 4) {
@@ -212,8 +216,8 @@ int main(int argc, char **argv)
                         }
                         break;
                     case 1:
-                        printf("Error: BASE64-ENCODED-STRING improper length\n");
-                        return 2;
+                        fprintf(stderr, "Error: BASE64-ENCODED-STRING improper length\n");
+                        return EXIT_FAILURE;
                     case 2:
                         data_len++;
                         break;
@@ -224,19 +228,33 @@ int main(int argc, char **argv)
 
                 int r;
                 if ((r = init_raw(&decoded[i], data_len))) {
-                    printf("Error: init_raw() returned %d\n", r);
-                    return 3;
+                    fprintf(stderr, "Error: init_raw() returned %d\n", r);
+                    return EXIT_FAILURE;
                 }
 
                 if ((r = b64_to_raw((char *)input[i].data, decoded[i]))) {
-                    printf("Error: b64_to_raw() returned %d\n", r);
-                    return 2;
+                    fprintf(stderr, "Error: b64_to_raw() returned %d\n", r);
+                    return EXIT_FAILURE;
                 }
             }
             break;
         default:
             fprintf(stderr, "Error: Invalid encode_t input\n");
             return EXIT_FAILURE;
+    }
+
+    if (opts.pad) {
+        for (int i = 0; i < num_inputs; i++) {
+            size_t len = decoded[i].len;
+            uint8_t add_pad = opts.pad - (len % opts.pad);
+            if ((r = init_raw(&decoded[i], len + add_pad))) {
+                fprintf(stderr, "Error: init_raw() returned %d\n", r);
+                return EXIT_FAILURE;
+            }
+            for (int j = 0; j < add_pad; j++) {
+                decoded[i].data[len + j] = add_pad;
+            }
+        }
     }
 
     char **output = (char **)malloc(num_inputs * sizeof(char **));
