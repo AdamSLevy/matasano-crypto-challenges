@@ -8,6 +8,7 @@ typedef struct {
     uint8_t *data;
     size_t len;
 } raw_t;
+#define INIT_RAW (raw_t){NULL, 0}
 
 int init_raw(raw_t *r, size_t len);
 int free_raw(raw_t *r);
@@ -16,6 +17,7 @@ extern char hexset[17];
 extern char b64set[257];
 
 // Operations
+int add_padding(raw_t *r, uint8_t pad);
 int fixed_xor(raw_t , raw_t , raw_t );
 
 // Conversion functions

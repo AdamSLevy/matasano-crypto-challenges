@@ -4,6 +4,7 @@ LDFLAGS=-Wall -O3 -s
 all: detect-aes-128-ecb			\
      decrypt-aes-128-ecb		\
      decrypt-aes-128-cbc		\
+     encrypt-aes-128-cbc		\
      convert 				\
      compute-hamming-distance 		\
      repeating-key-xor-crack 		\
@@ -17,6 +18,10 @@ detect-aes-128-ecb.o: detect-aes-128-ecb.c raw.h hamming-distance.h sorted-list.
 decrypt-aes-128-ecb: LDFLAGS+= -lcrypto
 decrypt-aes-128-ecb: decrypt-aes-128-ecb.o raw.o
 decrypt-aes-128-ecb.o: decrypt-aes-128-ecb.c raw.h
+
+encrypt-aes-128-cbc: LDFLAGS+= -lcrypto
+encrypt-aes-128-cbc: encrypt-aes-128-cbc.o raw.o
+encrypt-aes-128-cbc.o: encrypt-aes-128-cbc.c raw.h
 
 decrypt-aes-128-cbc: LDFLAGS+= -lcrypto
 decrypt-aes-128-cbc: decrypt-aes-128-cbc.o raw.o

@@ -11,14 +11,15 @@ const struct argp args = {
     "[INPUT1 [INPUT2 [...]]]",
     "Convert Hex, Base64, Char (raw)\v"
         "Input (--decode) and output (--encode) encoding default to CHAR. "
-        "If no INPUTs are passed then input is read from STDIN. ",
+        "If no INPUT argumentss are passed then input is read from STDIN. "
+        "Arugments and options may be supplied in any order.",
     0,
     0,
     0,
 };
 
 const struct argp_option options[] = {
-    {.doc = "Set input and output encodings", .group = 1},
+    {.doc = "Encoding Options", .group = 1},
     {
         "encode",
         'e',
@@ -35,14 +36,33 @@ const struct argp_option options[] = {
         "Set input encoding",
         1
     },
-    {.doc = "Parse options", .group = 2},
+    {.doc = "Parse Options", .group = 2},
     {
         "binary",
         'b',
         0,
         0,
-        "Parse files and output data as binary (includes '\\n' and '\\0' bytes). "
-            "only meaningful when reading or writing to a file with char encoding",
+        "Treat input or output data as binary "
+            "(i.e. no special treatment for '\\n' or '\\0'). "
+            "Only meaningful with CHAR encoding.",
+        2,
+    },
+    {
+        "concatenate",
+        'c',
+        0,
+        0,
+        "Do not separate outputs with a '\\n'. "
+            "Has no affect with --binary output.",
+        2,
+    },
+    {
+        "newline",
+        'n',
+        0,
+        0,
+        "Separate input data by '\\n' when inputs are files or from STDIN. "
+            "Has no effect on --binary input.",
         2,
     },
     {
@@ -50,17 +70,18 @@ const struct argp_option options[] = {
         'p',
         "BLOCKSIZE",
         OPTION_ARG_OPTIONAL,
-        "Pad data to BLOCKSIZE according to PKCS#7. BLOCKSIZE defaults to 16",
+        "Pad data to BLOCKSIZE according to PKCS#7. BLOCKSIZE defaults to 16.",
         2,
     },
-    {.doc = "Set input source and output destination", .group = 3},
+    {.doc = "Input & Output Options", .group = 3},
     {
         "file",
         'f',
         0,
         0,
         "INPUTs are parsed as list of files. "
-            "Newlines in files are ignored.",
+            "By default '\\n' bytes are discarded and the file is read as one input. "
+            "See --binary and --newline options.",
         3,
     },
     {
@@ -68,9 +89,10 @@ const struct argp_option options[] = {
         'o',
         "FILE",
         0,
-        "Output to FILE",
+        "Output to FILE.",
         3,
     },
+    {.doc = "Help", .group = 4},
     {0,0,0,0,0,0}
 };
 
@@ -79,25 +101,6 @@ int parse_opt(int key, char *arg, struct argp_state *state)
     convert_opts_t *opts = (convert_opts_t *)state->input;
     size_t arg_len;
     switch (key) {
-        case 'd':
-            arg_len = strlen(arg);
-            if (!strncasecmp(arg, "char", arg_len) ||
-                    !strncasecmp(arg, "raw", arg_len) ||
-                    !strncasecmp(arg, "ascii", arg_len)) {
-                    opts->input = ENCODE_CHAR;
-            } else if (!strncasecmp(arg, "64", arg_len) ||
-                    !strncasecmp(arg, "b64", arg_len) ||
-                    !strncasecmp(arg, "base64", arg_len)) {
-                    opts->input = ENCODE_BASE64;
-            } else if (!strncasecmp(arg, "hex", arg_len) ||
-                    !strncasecmp(arg, "16", arg_len) ||
-                    !strncasecmp(arg, "0x", arg_len) ||
-                    !strncasecmp(arg, "x", arg_len)) {
-                    opts->input = ENCODE_HEX;
-            } else {
-                argp_error(state, "Could not parse encoding %s", arg);
-            }
-            break;
         case 'e':
             arg_len = strlen(arg);
             if (!strncasecmp(arg, "char", arg_len) ||
@@ -119,15 +122,33 @@ int parse_opt(int key, char *arg, struct argp_state *state)
                 argp_error(state, "Could not parse encoding %s", arg);
             }
             break;
-        case 'f':
-            opts->source = SOURCE_FILE;
-            break;
-        case 'o':
-            opts->dest = DEST_FILE;
-            opts->output_file = arg;
+        case 'd':
+            arg_len = strlen(arg);
+            if (!strncasecmp(arg, "char", arg_len) ||
+                    !strncasecmp(arg, "raw", arg_len) ||
+                    !strncasecmp(arg, "ascii", arg_len)) {
+                    opts->input = ENCODE_CHAR;
+            } else if (!strncasecmp(arg, "64", arg_len) ||
+                    !strncasecmp(arg, "b64", arg_len) ||
+                    !strncasecmp(arg, "base64", arg_len)) {
+                    opts->input = ENCODE_BASE64;
+            } else if (!strncasecmp(arg, "hex", arg_len) ||
+                    !strncasecmp(arg, "16", arg_len) ||
+                    !strncasecmp(arg, "0x", arg_len) ||
+                    !strncasecmp(arg, "x", arg_len)) {
+                    opts->input = ENCODE_HEX;
+            } else {
+                argp_error(state, "Could not parse encoding %s", arg);
+            }
             break;
         case 'b':
             opts->binary = true;
+            break;
+        case 'c':
+            opts->concat = true;
+            break;
+        case 'n':
+            opts->newline = true;
             break;
         case 'p':
             if (NULL == arg) {
@@ -146,17 +167,20 @@ int parse_opt(int key, char *arg, struct argp_state *state)
                 }
             }
             break;
+        case 'f':
+            opts->source = SOURCE_FILE;
+            break;
+        case 'o':
+            opts->dest = DEST_FILE;
+            opts->output_file = arg;
+            break;
         case ARGP_KEY_ARG:
-            if (SOURCE_FILE != opts->source) {
-                opts->source = SOURCE_ARGS;
-            }
-            opts->argc = state->argc - (state->next - 1);
-            opts->argv = &state->argv[state->next - 1];
-            state->next = state->argc;
+            opts->argv = (char **)realloc(opts->argv, ++opts->argc * sizeof(char *));
+            opts->argv[opts->argc - 1] = arg;
             break;
         case ARGP_KEY_NO_ARGS:
             if (SOURCE_FILE == opts->source) {
-                argp_error(state, "At least one file must be specified with --file");
+                argp_error(state, "At least one INPUT file must be specified with --file");
             }
             opts->source = SOURCE_STDIN;
             break;

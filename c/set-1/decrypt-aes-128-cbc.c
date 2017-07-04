@@ -103,13 +103,13 @@ int main(int argc, char **argv)
     EVP_CIPHER_CTX *ctx;
     if (!(ctx = EVP_CIPHER_CTX_new())) {
         ERR_print_errors_fp(stderr);
-        fprintf(stderr, "Error: EVP_CIPHER_CTX_new() returned %d\n", r);
+        fprintf(stderr, "Error: EVP_CIPHER_CTX_new()\n");
         return EXIT_FAILURE;
     }
 
     if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key.data, NULL)) {
         ERR_print_errors_fp(stderr);
-        fprintf(stderr, "Error: EVP_EncryptInit_ex() returned %d\n", r);
+        fprintf(stderr, "Error: EVP_EncryptInit_ex()\n");
         return EXIT_FAILURE;
     }
 
@@ -117,14 +117,14 @@ int main(int argc, char **argv)
     int len = plain.len;
     if (1 != EVP_DecryptUpdate(ctx, plain.data, &len, cipher.data, cipher.len)) {
         ERR_print_errors_fp(stderr);
-        fprintf(stderr, "Error: EVP_DecryptUpdate() returned %d\n", r);
+        fprintf(stderr, "Error: EVP_DecryptUpdate()\n");
         return EXIT_FAILURE;
     }
     plain.len = len;
 
     if (1 != EVP_DecryptFinal_ex(ctx, plain.data + len, &len)) {
         ERR_print_errors_fp(stderr);
-        fprintf(stderr, "Error: EVP_DecryptFinal_ex() returned %d\n", r);
+        fprintf(stderr, "Error: EVP_DecryptFinal_ex()\n");
         return EXIT_FAILURE;
     }
     plain.len += len;

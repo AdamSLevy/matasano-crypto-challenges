@@ -46,6 +46,25 @@ int free_raw(raw_t *r)
 // All of the following functions assume that any necessary memory has been
 // appropriately allocated by the calling function
 
+int add_padding(raw_t *r, uint8_t pad)
+{
+    if (pad < 1 || NULL == r) {
+        return 1;
+    }
+
+    // Add padding
+    int len = r->len;
+    uint8_t add_pad = pad - (len % pad);
+    if (init_raw(r, len + add_pad)) {
+        fprintf(stderr, "Error: init_raw()\n");
+        return 1;
+    }
+    for (int j = 0; j < add_pad; j++) {
+        r->data[len + j] = add_pad;
+    }
+    return 0;
+}
+
 // Operations
 int fixed_xor(raw_t r1, raw_t r2, raw_t res)
 {

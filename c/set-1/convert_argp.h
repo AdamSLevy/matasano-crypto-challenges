@@ -33,17 +33,21 @@ typedef struct {
     int argc;
     char **argv;
     bool binary;
+    bool concat;
+    bool newline;
     int pad;
 } convert_opts_t;
 
 #define CONVERT_OPTS_INIT (convert_opts_t){ \
     ENCODE_CHAR, \
     ENCODE_CHAR, \
-    SOURCE_STDIN, \
+    SOURCE_ARGS, \
     DEST_STDOUT, \
     NULL, \
     0, \
     NULL, \
+    false, \
+    false, \
     false, \
     0, \
 }

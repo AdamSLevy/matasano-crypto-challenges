@@ -9,129 +9,88 @@
 #include "raw.h"
 #include "convert_argp.h"
 
+#define BUF_SIZE (128)
+
+#define PRINT_LINE() \
+    fprintf(stderr,"%10s:%-3d %s%-2s", __FILE__, __LINE__, __func__,"\n")
+
 int main(int argc, char **argv)
 {
     convert_opts_t opts = CONVERT_OPTS_INIT;
-    int r = 0;
-    if ((r = argp_parse(&args, argc, argv, 0, NULL, &opts))) {
-        return r;
+    if (argp_parse(&args, argc, argv, 0, NULL, &opts)) {
+        return EXIT_FAILURE;
     }
 
-    int num_inputs = opts.argc;
+    int num_inputs;
     raw_t *input = NULL;
-    switch (opts.source) {
-        case SOURCE_ARGS:
-            input = (raw_t *)calloc(num_inputs, sizeof(raw_t));
-            for (int i = 0; i < num_inputs; i++) {
-                size_t len = strlen(opts.argv[i]);
-                if ((r = init_raw(&input[i], len))) {
-                    fprintf(stderr, "Error: init_raw() returned %d\n", r);
-                    return EXIT_FAILURE;
-                }
-                memcpy(input[i].data, opts.argv[i], len);
+    if (SOURCE_ARGS == opts.source) {
+        num_inputs = opts.argc;
+        input = (raw_t *)calloc(num_inputs, sizeof(raw_t));
+        for (int i = 0; i < num_inputs; i++) {
+            size_t len = strlen(opts.argv[i]);
+            if (init_raw(&input[i], len)) {
+                fprintf(stderr, "Error: init_raw()\n");
+                return EXIT_FAILURE;
             }
-            break;
-        case SOURCE_FILE:
-            input = (raw_t *)calloc(num_inputs, sizeof(raw_t));
-            for (int i = 0; i < num_inputs; i++) {
-                FILE *file = fopen(opts.argv[i], "r");
-                if (NULL == file) {
+            memcpy(input[i].data, opts.argv[i], len);
+        }
+    } else {
+        int num_files;
+        num_inputs = 0;
+        if (SOURCE_FILE == opts.source) {
+            num_files = opts.argc;
+        } else {
+            num_files = 1;
+        }
+        FILE *ifile = stdin;
+        for (int i = 0; i < num_files; i++) {
+            if (SOURCE_FILE == opts.source) {
+                ifile = fopen(opts.argv[i], "r");
+                if (NULL == ifile) {
                     int err = errno;
                     fprintf(stderr, "Error: fopen() %d, '%s' '%s'\n",
                             err, strerror(err), opts.argv[i]);
                     return EXIT_FAILURE;
                 }
-
-                if (fseek(file, 0L, SEEK_END)) {
-                    int err = errno;
-                    fprintf(stderr, "Error: fseek() %d, '%s'\n", err, strerror(err));
-                    return EXIT_FAILURE;
-                }
-                size_t file_size = ftell(file);
-                rewind(file);
-
-                // Parse file line by line and remove the '\n' chars
-                int ret;
-                input[i].data = NULL;
-                input[i].len = 0;
-                if ((ret = init_raw(&input[i], file_size))) {
-                    fprintf(stderr, "Error: init_raw() returned %d\n", ret);
-                    return EXIT_FAILURE;
-                }
-                if (ENCODE_CHAR == opts.input && opts.binary) {
-                    size_t num_read = fread(input[i].data, 1, file_size, file);
-                    if (num_read != file_size) {
-                        fprintf(stderr, "Did not read entire file %lu filesize %lu\n",
-                                num_read, file_size);
-                        return EXIT_FAILURE;
-                    }
-                    input[i].data[file_size] = '\0';
-                    input[i].len = file_size;
-                } else {
-                    char *line = NULL;
-                    size_t input_len = 0;
-                    size_t n = 0;
-                    int r = 0;
-                    errno = 0;
-                    while (-1 != (r = getline(&line, &n, file))) {
-                        memcpy(input[i].data + input_len, line, r - 1);
-                        input_len += (r - 1);
-                    }
-                    if (errno) {
-                        int err = errno;
-                        fprintf(stderr, "Error: getline() %d, '%s'", err, strerror(err));
-                        return EXIT_FAILURE;
-                    }
-
-                    free(line);
-                    if (fclose(file)) {
-                        int err = errno;
-                        fprintf(stderr, "Error: fclose() %d, '%s'", err, strerror(err));
-                        return EXIT_FAILURE;
-                    }
-
-                    if ((r = init_raw(&input[i], input_len))) {
-                        fprintf(stderr, "Error: init_raw() returned %d\n", r);
-                        return EXIT_FAILURE;
-                    }
-                    input[i].data[input_len] = '\0';
-                }
             }
-            break;
-        case SOURCE_STDIN:
-            {
-                FILE *file = stdin;
-                num_inputs = 0;
+
+            if (NULL == (input = (raw_t *)realloc(input,
+                            (num_inputs + 1) * sizeof(raw_t)))) {
+                int err = errno;
+                fprintf(stderr, "Error: realloc() %d, '%s'",
+                        err, strerror(err));
+                return EXIT_FAILURE;
+            }
+            input[num_inputs] = INIT_RAW;
+
+            if (ENCODE_CHAR == opts.input && opts.binary) {
+                size_t buf_len = BUF_SIZE;
+                size_t num_read = 0;
+                do {
+                    if (init_raw(&input[num_inputs], buf_len)) {
+                        fprintf(stderr, "Error: init_raw()\n");
+                        return EXIT_FAILURE;
+                    }
+
+                    size_t read = fread(&input[num_inputs].data[num_read],
+                            1, BUF_SIZE, ifile);
+                    num_read += read;
+                    if (read == BUF_SIZE) {
+                        buf_len += BUF_SIZE;
+                    }
+                } while (!feof(ifile));
+                if (init_raw(&input[num_inputs], num_read)) {
+                    fprintf(stderr, "Error: init_raw()\n");
+                    return EXIT_FAILURE;
+                }
+                num_inputs++;
+            } else {
                 char *line = NULL;
-                size_t n = 0;
-                int r = 0;
-                errno = 0;
-                if (ENCODE_CHAR == opts.input && opts.binary) {
-                    num_inputs = 1;
-                    if (NULL == (input = (raw_t *)calloc(1, sizeof(raw_t)))) {
-                        int err = errno;
-                        fprintf(stderr, "Error: realloc() %d, '%s'", err, strerror(err));
-                        return EXIT_FAILURE;
-                    }
-                    int ret;
-                    size_t file_size = 100;
-                    size_t num_read = 0;
-                    do {
-                        if ((ret = init_raw(&input[0], file_size))) {
-                            fprintf(stderr, "Error: init_raw() returned %d\n", ret);
-                            return EXIT_FAILURE;
-                        }
-                        num_read += fread(input[0].data, 1, file_size, file);
-                        if (num_read == file_size) {
-                            file_size += 100;
-                        }
-                    } while (!feof(file));
-                    if ((ret = init_raw(&input[0], num_read))) {
-                        fprintf(stderr, "Error: init_raw() returned %d\n", ret);
-                        return EXIT_FAILURE;
-                    }
-                } else {
-                    while (-1 != (r = getline(&line, &n, file))) {
+                size_t line_len = 0;
+                size_t input_len = 0;
+                int r;
+                while (-1 != (r = getline(&line, &line_len, ifile))) {
+                    if (opts.newline) {
                         if (NULL == (input = (raw_t *)realloc(input,
                                         (num_inputs + 1) * sizeof(raw_t)))) {
                             int err = errno;
@@ -139,30 +98,38 @@ int main(int argc, char **argv)
                                     err, strerror(err));
                             return EXIT_FAILURE;
                         }
-                        int ret;
-                        input[num_inputs].data = NULL;
-                        input[num_inputs].len = 0;
-                        if ((ret = init_raw(&input[num_inputs], r - 1))) {
-                            fprintf(stderr, "Error: init_raw() returned %d\n", ret);
+                        input[num_inputs].data = (uint8_t *)line;
+                        if (init_raw(&input[num_inputs], r - 1)) {
+                            fprintf(stderr, "Error: init_raw()\n");
                             return EXIT_FAILURE;
                         }
-                        memcpy(input[num_inputs].data, line, r - 1);
-                        input[num_inputs].len = r-1;
+                        line = NULL;
+                        line_len = 0;
                         num_inputs++;
+                    } else {
+                        if (init_raw(&input[num_inputs], input_len + r - 1)) {
+                            fprintf(stderr, "Error: init_raw()\n");
+                            return EXIT_FAILURE;
+                        }
+                        memcpy(&input[num_inputs].data[input_len], line, r - 1);
+                        input_len += r - 1;
                     }
-                    if (errno) {
-                        int err = errno;
-                        fprintf(stderr, "Error: getline() %d, '%s'", err, strerror(err));
-                        return EXIT_FAILURE;
-                    }
-
-                    free(line);
+                }
+                if (errno) {
+                    int err = errno;
+                    fprintf(stderr, "Error: getline() %d, '%s'", err, strerror(err));
+                    return EXIT_FAILURE;
+                }
+                if (!opts.newline) {
+                    num_inputs++;
                 }
             }
-            break;
-        default:
-            fprintf(stderr, "Error: Invalid source_t source\n");
-            return EXIT_FAILURE;
+            if (fclose(ifile)) {
+                int err = errno;
+                fprintf(stderr, "Error: fclose() %d, '%s'", err, strerror(err));
+                return EXIT_FAILURE;
+            }
+        }
     }
 
     raw_t *decoded;
@@ -226,14 +193,13 @@ int main(int argc, char **argv)
                         break;
                 }
 
-                int r;
-                if ((r = init_raw(&decoded[i], data_len))) {
-                    fprintf(stderr, "Error: init_raw() returned %d\n", r);
+                if (init_raw(&decoded[i], data_len)) {
+                    fprintf(stderr, "Error: init_raw()\n");
                     return EXIT_FAILURE;
                 }
 
-                if ((r = b64_to_raw((char *)input[i].data, decoded[i]))) {
-                    fprintf(stderr, "Error: b64_to_raw() returned %d\n", r);
+                if (b64_to_raw((char *)input[i].data, decoded[i])) {
+                    fprintf(stderr, "Error: b64_to_raw()\n");
                     return EXIT_FAILURE;
                 }
             }
@@ -247,8 +213,8 @@ int main(int argc, char **argv)
         for (int i = 0; i < num_inputs; i++) {
             size_t len = decoded[i].len;
             uint8_t add_pad = opts.pad - (len % opts.pad);
-            if ((r = init_raw(&decoded[i], len + add_pad))) {
-                fprintf(stderr, "Error: init_raw() returned %d\n", r);
+            if (init_raw(&decoded[i], len + add_pad)) {
+                fprintf(stderr, "Error: init_raw()\n");
                 return EXIT_FAILURE;
             }
             for (int j = 0; j < add_pad; j++) {
@@ -306,8 +272,11 @@ int main(int argc, char **argv)
         if (ENCODE_CHAR == opts.output && opts.binary) {
             fwrite(output[i], decoded[i].len, sizeof(uint8_t), ofile);
         } else {
-            fprintf(ofile, "%s%s", output[i],
-                    i == (num_inputs - 1) ? "\n": "");
+            fputs(output[i], ofile);
+            if (!opts.concat ||
+                    (DEST_STDOUT == opts.dest && i == (num_inputs - 1))) {
+               fputc('\n', ofile);
+            }
         }
     }
 
